@@ -39,7 +39,7 @@ def build_testing_silver(spark: SparkSession) -> None:
 
     tests_raw = read_csv(
         spark,
-        bronze_path("covid_tracking", "covidtracking_states_daily.csv"),
+        bronze_path("covid_tracking", "states_daily.csv"),
     )
 
     tests_std = (
@@ -78,3 +78,16 @@ def build_testing_silver(spark: SparkSession) -> None:
         silver_path("testingstandardized"),
         partition_cols=["statecode", "year", "month", "day"],
     )
+
+
+if __name__ == "__main__":
+    """
+    Entry point for running the silver testing build as a standalone Spark job.
+    """
+    from common.spark_session import create_spark
+
+    spark = create_spark("covid-silver-testing")
+    try:
+        build_testing_silver(spark)
+    finally:
+        spark.stop()
