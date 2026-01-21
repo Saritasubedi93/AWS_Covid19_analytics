@@ -17,7 +17,7 @@ def build_testing_silver(spark: SparkSession) -> None:
     """
     Build the silver testingstandardized dataset:
 
-    - Input:  bronze/covid_tracking/covidtracking_states_daily.csv
+    - Input:  bronze/covid_tracking/states_daily.csv
               Columns include: date (yyyymmdd), state, positive,
               negative, totalTestResults
     - Lookup: bronze/static/states_abv.csv

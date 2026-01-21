@@ -23,8 +23,8 @@ def load_states_lookup(spark: SparkSession) -> DataFrame:
     states = (
         read_csv(spark, path)
         .select(
-            upper_trim("abbr").alias("statecode"),
-            F.initcap("name").alias("statename"),
+            upper_trim("Abbreviation").alias("statecode"),
+            F.initcap("State").alias("statename"),
         )
     )
     return states
