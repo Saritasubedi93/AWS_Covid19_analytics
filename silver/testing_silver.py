@@ -55,7 +55,7 @@ def build_testing_silver(spark: SparkSession) -> None:
              .option("header", True)
              .schema(testing_schema)
              .csv(bronze_path("covid_tracking", "states_daily.csv"))
-             .limit(200)  # TEMP: used subset for faster test runs
+             #.limit(200)  # TEMP: used subset for faster test runs
     )
 
     tests_std = (
