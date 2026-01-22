@@ -1,4 +1,5 @@
 """
+#dimdate_gold.py
 Gold layer builder for the date dimension (dimdate).
 
 Reads all distinct dates from the silver cases and testing datasets
@@ -27,7 +28,7 @@ def build_dimdate(spark: SparkSession) -> None:
       - year     (int)
       - month    (int)
       - day      (int)
-      - dow      (int, 1=Mon..7=Sun)
+      - dow      (int, 1=Sunday..7=Saturday)
       - isweekend (boolean)
     """
     cases = spark.read.parquet(silver_path("casesstandardized"))
@@ -41,8 +42,8 @@ def build_dimdate(spark: SparkSession) -> None:
         .withColumn("year", F.year("fulldate"))
         .withColumn("month", F.month("fulldate"))
         .withColumn("day", F.dayofmonth("fulldate"))
-        .withColumn("dow", F.date_format("fulldate", "u").cast("int"))
-        .withColumn("isweekend", F.col("dow").isin(6, 7))
+        .withColumn("dow", F.dayofweek("fulldate").cast("int"))
+        .withColumn("isweekend", F.col("dow").isin(1, 7))
     )
 
     dimdate.write.mode("overwrite").parquet(gold_path("dimdate"))

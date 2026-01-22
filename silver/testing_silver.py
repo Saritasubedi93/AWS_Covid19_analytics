@@ -8,7 +8,9 @@ testingstandardized.
 """
 
 from pyspark.sql import SparkSession
-from common.io_utils import bronze_path, silver_path, read_csv, write_parquet_partitioned
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType
+
+from common.io_utils import bronze_path, silver_path, write_parquet_partitioned
 from common.transform_common import upper_trim, to_date_standard, cast_long, add_ymd
 from silver.states_lookup import load_states_lookup
 
@@ -37,14 +39,28 @@ def build_testing_silver(spark: SparkSession) -> None:
     """
     states = load_states_lookup(spark)
 
-    tests_raw = read_csv(
-        spark,
-        bronze_path("covid_tracking", "states_daily.csv"),
+    # Explicit schema: only columns we need
+    testing_schema = StructType(
+        [
+            StructField("date",             StringType(),  True),
+            StructField("state",            StringType(),  True),
+            StructField("positive",         IntegerType(), True),
+            StructField("negative",         IntegerType(), True),
+            StructField("totalTestResults", IntegerType(), True),
+        ]
+    )
+
+    tests_raw = (
+        spark.read
+             .option("header", True)
+             .schema(testing_schema)
+             .csv(bronze_path("covid_tracking", "states_daily.csv"))
+             .limit(200)  # TEMP: used subset for faster test runs
     )
 
     tests_std = (
         tests_raw
-        # date is int yyyymmdd in this file.
+        # date is yyyymmdd
         .withColumn("fulldate", to_date_standard("date", "yyyyMMdd"))
         .withColumn("statecode", upper_trim("state"))
         .join(
@@ -53,8 +69,8 @@ def build_testing_silver(spark: SparkSession) -> None:
             how="left",
         )
         .withColumn("teststotalcum", cast_long("totalTestResults"))
-        .withColumn("testsposcum", cast_long("positive"))
-        .withColumn("testsnegcum", cast_long("negative"))
+        .withColumn("testsposcum",   cast_long("positive"))
+        .withColumn("testsnegcum",   cast_long("negative"))
     )
 
     tests_std = (
@@ -71,6 +87,7 @@ def build_testing_silver(spark: SparkSession) -> None:
             "day",
         )
         .dropna(subset=["fulldate", "statecode"])
+        .repartition("statecode", "year")
     )
 
     write_parquet_partitioned(
@@ -81,9 +98,6 @@ def build_testing_silver(spark: SparkSession) -> None:
 
 
 if __name__ == "__main__":
-    """
-    Entry point for running the silver testing build as a standalone Spark job.
-    """
     from common.spark_session import create_spark
 
     spark = create_spark("covid-silver-testing")

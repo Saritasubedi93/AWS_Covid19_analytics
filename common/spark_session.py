@@ -14,9 +14,11 @@ def create_spark(app_name: str) -> SparkSession:
         SparkSession.builder
         .appName(app_name)
         # Use S3A and the default AWS credentials provider chain
+        .config("spark.sql.shuffle.partitions", "64")
         .config(
             "spark.hadoop.fs.s3a.aws.credentials.provider",
             "com.amazonaws.auth.DefaultAWSCredentialsProviderChain",
         )
+        .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
         .getOrCreate()
     )
