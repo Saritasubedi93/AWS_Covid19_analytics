@@ -61,8 +61,18 @@ End‑to‑end COVID‑19 analytics pipeline on AWS using PySpark and a bronze�
 ## Glue, Athena, and Redshift
 
 - **Glue & Athena:** Register Silver and Gold folders as external tables, repair partitions, and run QA checks on schema, row counts, and date ranges. [file:1]  
-- **Redshift:** Create a matching `covidgold` star schema and use `COPY ... FORMAT AS PARQUET` from Gold S3 paths for fast BI and ad‑hoc SQL. [file:1]  
-- Example queries include top‑N states by new cases on a given date and 7‑day positivity trends per state. [file:1]
+- **Redshift:** Used as a warehouse to transfer and store gold tables. 
+## Issues with Redshift
+- **Loading gold data from S3 to Redshift**
+
+The gold Parquet files in S3 are partitioned by `statecode`. Because the partition column lives in the S3 folder paths (not inside the Parquet files), we **cannot** use a direct `COPY ... FORMAT AS PARQUET` into Redshift fact tables without getting a column mismatch.
+
+Instead, the workflow is:
+
+1. Define external tables in **Athena** on top of the gold layer in S3 (database `covid_gold_db`), and run `MSCK REPAIR TABLE` to load partitions.
+2. In **Redshift**, create an external schema (e.g. `covid_ext`) pointing to the same Glue/Athena database.
+3. Create internal star‑schema tables in the `covid_gold` schema (`dimdate`, `dimstate`, `factcasesstatedaily`, `facttestingstatedaily`).
+4. Use `INSERT ... SELECT` from the external tables (for example, `covid_ext.factcasesstatedaily_ext`) into the internal Redshift fact tables instead of using `COPY` directly from S3.
 
 ---
 
@@ -70,4 +80,4 @@ End‑to‑end COVID‑19 analytics pipeline on AWS using PySpark and a bronze�
 
 - Configure S3 bucket names, Glue databases, and Redshift connection details in a central config file. [file:1]  
 - Run the **Bronze → Silver** PySpark job to build `casesstandardized` and `testingstandardized`. [file:1]  
-- Run the **Silver → Gold** PySpark job, refresh Glue/Athena metadata, and then load Redshift using `COPY` to complete the end‑to‑end pipeline. [file:1]
+  - Run the **Silver → Gold** PySpark job, refresh Glue/Athena metadata, and then load Redshift using `COPY` or ` INSERT INTO..SELECT`  commands to complete the end‑to‑end pipeline. [file:1]
